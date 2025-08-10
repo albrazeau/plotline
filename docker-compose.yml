@@ -13,6 +13,17 @@ services:
       - ollama_data:/root/.ollama
     # restart: unless-stopped
 
+  valkey:
+    image: valkey/valkey:8.1-alpine
+    container_name: valkey
+    ports:
+      - "6379:6379"
+    networks:
+      - plotline
+    volumes:
+      - valkey_data:/data
+    # restart: unless-stopped
+
   back:
     build:
       context: ./back
@@ -27,6 +38,7 @@ services:
 
 volumes:
   ollama_data:
+  valkey_data:
 
 networks:
   plotline:

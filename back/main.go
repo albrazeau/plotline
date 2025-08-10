@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"log"
-	"net/http"
-	"net/url"
+	"main/internal/llm"
+	"main/internal/session/store"
+	"os/signal"
+	"syscall"
 	"time"
 
-	"github.com/ollama/ollama/api"
+	"github.com/valkey-io/valkey-go"
 )
 
 var (
@@ -16,39 +18,29 @@ var (
 	built   = "unknown" // ISO-8601, UTC
 )
 
+func init() {
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+	log.Printf("BACK: version=%s commit=%s built=%s\n", version, commit, built)
+}
 func main() {
 
-	log.Printf("version=%s commit=%s built=%s\n", version, commit, built)
+	appLifecycleCtx, appLifecycleCancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer appLifecycleCancel()
 
-	u, err := url.Parse("http://ollama:11434")
+	ctx, cancel := context.WithTimeout(appLifecycleCtx, time.Second)
+	defer cancel()
+
+	_, err := llm.NewOllamaLLM(ctx, "http://ollama:11434")
+	log.Println("ollama server is accessible")
+
+	_, err = store.NewValkeyStore(ctx, valkey.ClientOption{InitAddress: []string{"valkey:6379"}})
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Println("connected to valkey")
 
-	client := api.NewClient(u, http.DefaultClient)
+	// here, do graceful shutdown after the app is given a shutdown signal
+	<-appLifecycleCtx.Done()
 
-	accessible := false
-	for range 5 {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		err := client.Heartbeat(ctx)
-		if err == nil {
-			accessible = true
-			cancel()
-			break
-		}
-		log.Println("unable to ping ollama client, spinning...")
-		cancel()
-		time.Sleep(time.Second)
-	}
-
-	if !accessible {
-		log.Fatal("unable to access ollama server, exiting")
-	}
-
-	log.Println("ollama server is accessible")
-
-	for {
-		log.Println("on")
-		time.Sleep((time.Second * 5))
-	}
+	log.Println("shutting down")
 }

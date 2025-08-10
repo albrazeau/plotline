@@ -4,10 +4,11 @@ tmp_dir = "/air/tmp"
 [build]
 cmd = "GOCACHE=/air/cache/go-build go build -o /air/bin/app ."
 bin = "/air/bin/app"
-delay = 150
+delay = 500
 stop_on_error = true
 send_interrupt = true
-kill_signal = "kill"
+kill_delay = 5000
+kill_signal = "SIGTERM"
 include_ext = ["go", "mod", "sum", "env", "yaml", "toml"]
 exclude_dir = ["/app/vendor", "/app/.git"]
 log = "/air/logs/air.log"

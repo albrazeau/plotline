@@ -7,10 +7,10 @@ COPY . .
 ###########################################
 
 FROM base AS dev
+COPY dev.air.toml /air/air.toml
 RUN go install github.com/air-verse/air@v1.62.0
 RUN mkdir -p /air/bin /air/logs /air/tmp /air/cache
 EXPOSE 8080
-COPY dev.air.toml /air/air.toml
 CMD ["air", "-c", "/air/air.toml"]
 
 ###########################################
