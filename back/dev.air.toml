@@ -1,0 +1,18 @@
+root = "/app"
+tmp_dir = "/air/tmp"
+
+[build]
+cmd = "GOCACHE=/air/cache/go-build go build -o /air/bin/app ."
+bin = "/air/bin/app"
+delay = 150
+stop_on_error = true
+send_interrupt = true
+kill_signal = "kill"
+include_ext = ["go", "mod", "sum", "env", "yaml", "toml"]
+exclude_dir = ["/app/vendor", "/app/.git"]
+log = "/air/logs/air.log"
+
+[log]
+time = true
+main_only = false
+silent = false
