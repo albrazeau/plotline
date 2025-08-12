@@ -31,3 +31,9 @@ func NewOllamaLLM(ctx context.Context, uri string) (*OllamaLLM, error) {
 		client: client,
 	}, nil
 }
+
+// func (ollama *OllamaLLM) Chat(ctx context.Context, model string) {
+// 	ollama.client.Chat(ctx, &api.ChatRequest{
+// 		Model: model,
+// 	})
+// }
