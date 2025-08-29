@@ -3,16 +3,18 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
+	"fmt"
 	"log/slog"
+	"main/config"
 	"main/internal/api"
 	"main/internal/llm"
-	"main/internal/logx"
 	"main/internal/session"
 	"main/internal/session/store"
+	"main/logx"
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -29,20 +31,25 @@ var (
 
 func run() int {
 
-	// init the logger and determine if it is in production
-	env := strings.ToLower(strings.TrimSpace(os.Getenv("APP_ENV")))
-	isProd := env == "production" || env == "prod"
-	logger := logx.InitLogger(isProd)
+	configPath := flag.String("config", "", "Path to the YAML config file")
+	flag.Parse()
 
+	// load and validate config
+	cfg, err := config.Load(*configPath)
+	if err != nil {
+		panic("invalid config: " + err.Error())
+	}
+
+	// init the logger
+	logger := logx.InitLogger(cfg.Log)
 	logger.Info(
 		"application info",
 		slog.String("version", version),
 		slog.String("commit", commit),
 		slog.String("built", built),
-		slog.Bool("is_production", isProd),
 	)
 
-	if isProd {
+	if cfg.App.Env == "production" || cfg.App.Env == "prod" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
@@ -54,14 +61,16 @@ func run() int {
 	initCtx, cancel := context.WithTimeout(appCtx, time.Second)
 	defer cancel()
 
-	ollamaLLM, err := llm.NewOllamaLLM(initCtx, "http://ollama:11434")
+	// connect to the llm
+	ollamaLLM, err := llm.NewOllamaLLM(initCtx, cfg.Ollama.BaseURL)
 	if err != nil {
 		logger.Error("ollama init failed", slog.String("error", err.Error()))
 		return 1
 	}
 	logger.Info("ollama server is accessible")
 
-	vkStore, err := store.NewValkeyStore(initCtx, valkey.ClientOption{InitAddress: []string{"valkey:6379"}})
+	// connect to the store
+	vkStore, err := store.NewValkeyStore(initCtx, valkey.ClientOption{InitAddress: []string{cfg.Valkey.Address}})
 	if err != nil {
 		logger.Error("unable to create valkey store", slog.String("error", err.Error()))
 		return 1
@@ -77,7 +86,7 @@ func run() int {
 	app.RegisterRoutes(router)
 
 	srv := &http.Server{
-		Addr:    ":8080",
+		Addr:    fmt.Sprintf(":%d", cfg.App.Port),
 		Handler: router,
 	}
 
