@@ -62,7 +62,7 @@ func run() int {
 	defer cancel()
 
 	// connect to the llm
-	ollamaLLM, err := llm.NewOllamaLLM(initCtx, cfg.Ollama.BaseURL)
+	ollamaLLM, err := llm.NewOllamaLLM(initCtx, logger, cfg.Ollama.BaseURL)
 	if err != nil {
 		logger.Error("ollama init failed", slog.String("error", err.Error()))
 		return 1

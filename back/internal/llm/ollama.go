@@ -2,6 +2,8 @@ package llm
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 
@@ -12,9 +14,10 @@ var _ LLM = &OllamaLLM{}
 
 type OllamaLLM struct {
 	client *api.Client
+	logger *slog.Logger
 }
 
-func NewOllamaLLM(ctx context.Context, uri string) (*OllamaLLM, error) {
+func NewOllamaLLM(ctx context.Context, logger *slog.Logger, uri string) (*OllamaLLM, error) {
 	u, err := url.Parse(uri)
 	if err != nil {
 		return nil, err
@@ -29,11 +32,25 @@ func NewOllamaLLM(ctx context.Context, uri string) (*OllamaLLM, error) {
 
 	return &OllamaLLM{
 		client: client,
+		logger: logger,
 	}, nil
 }
 
-// func (ollama *OllamaLLM) Chat(ctx context.Context, model string) {
-// 	ollama.client.Chat(ctx, &api.ChatRequest{
+func (o *OllamaLLM) Models(ctx context.Context) ([]string, error) {
+	resp, err := o.client.List(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to list models: %w", err)
+	}
+
+	models := make([]string, 0)
+	for _, model := range resp.Models {
+		models = append(models, model.Name)
+	}
+	return models, nil
+}
+
+// func (o *OllamaLLM) Chat(ctx context.Context, model string) {
+// 	o.client.Chat(ctx, &api.ChatRequest{
 // 		Model: model,
 // 	})
 // }

@@ -41,7 +41,7 @@ func defaultConfig() *Config {
 			Port: 8080,
 		},
 		Log: LogConfig{
-			Level:  "info",
+			Level:  "debug",
 			Format: "text",
 		},
 		Ollama: OllamaConfig{

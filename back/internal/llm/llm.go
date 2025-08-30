@@ -1,3 +1,7 @@
 package llm
 
-type LLM interface{}
+import "context"
+
+type LLM interface {
+	Models(context.Context) ([]string, error)
+}
