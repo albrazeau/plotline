@@ -24,11 +24,13 @@ func InitLogger(logCfg config.LogConfig) *slog.Logger {
 				}
 				return a
 			},
+			AddSource: true,
 		})
 	} else {
 		handler = tint.NewHandler(os.Stdout, &tint.Options{
 			Level:      level,
 			TimeFormat: time.RFC3339Nano,
+			AddSource:  true,
 		})
 	}
 

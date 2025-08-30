@@ -70,7 +70,7 @@ func run() int {
 	logger.Info("ollama server is accessible")
 
 	// connect to the store
-	vkStore, err := store.NewValkeyStore(initCtx, valkey.ClientOption{InitAddress: []string{cfg.Valkey.Address}})
+	vkStore, err := store.NewValkeyStore(initCtx, logger, valkey.ClientOption{InitAddress: []string{cfg.Valkey.Address}})
 	if err != nil {
 		logger.Error("unable to create valkey store", slog.String("error", err.Error()))
 		return 1
@@ -78,7 +78,7 @@ func run() int {
 	logger.Info("connected to valkey")
 	defer vkStore.Close()
 
-	sessions := session.New(vkStore)
+	sessions := session.New(logger, vkStore)
 
 	// router and app
 	router := gin.New()

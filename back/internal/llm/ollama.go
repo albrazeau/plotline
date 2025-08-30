@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"slices"
 
 	"github.com/ollama/ollama/api"
 )
@@ -46,6 +47,7 @@ func (o *OllamaLLM) Models(ctx context.Context) ([]string, error) {
 	for _, model := range resp.Models {
 		models = append(models, model.Name)
 	}
+	slices.Sort(models)
 	return models, nil
 }
 
