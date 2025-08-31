@@ -3,11 +3,13 @@ package store
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"main/internal/models"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/valkey-io/valkey-go"
 )
 
@@ -60,4 +62,40 @@ func (vk *ValkeyStore) Save(ctx context.Context, sess *models.Session) error {
 		return err
 	}
 	return nil
+}
+
+func (vk *ValkeyStore) Get(ctx context.Context, sessID uuid.UUID) (*models.Session, error) {
+	key := fmt.Sprintf("session:%s", sessID.String())
+
+	getCmd := vk.client.B().Get().Key(key).Build()
+	expireCmd := vk.client.B().Expire().Key(key).Seconds(int64(defaultSessionTTL.Seconds())).Build()
+
+	results := vk.client.DoMulti(ctx, getCmd, expireCmd)
+	if results == nil {
+		vk.logger.Error("pipeline failed: no results")
+		return nil, errors.New("pipeline failed: no results returned")
+	}
+	if len(results) != 2 {
+		vk.logger.Error("pipeline returned unexpected result count", slog.Int("count", len(results)))
+		return nil, fmt.Errorf("pipeline unexpected result count: %d", len(results))
+	}
+
+	getResp := results[0]
+	if err := getResp.Error(); err != nil {
+		if errors.Is(err, valkey.Nil) {
+			vk.logger.Info("session not found", slog.String("key", key))
+			return nil, ErrSessionNotFound
+		}
+		vk.logger.Error("failed to fetch session", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	var sess models.Session
+	if err := getResp.DecodeJSON(&sess); err != nil {
+		vk.logger.Error("failed to decode session JSON", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	expResp := results[1]
+	return &sess, expResp.Error()
 }

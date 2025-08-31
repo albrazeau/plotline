@@ -1,13 +1,16 @@
 package api
 
 import (
+	"errors"
 	"log/slog"
 	"main/internal/llm"
 	"main/internal/session"
+	"main/internal/session/store"
 	"net/http"
 	"slices"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type API struct {
@@ -35,6 +38,7 @@ func (a *API) RegisterRoutes(router *gin.Engine) {
 	v1Routes := router.Group("/api/v1")
 	v1Routes.GET("/models", a.models)
 	v1Routes.POST("/session", a.startSession)
+	v1Routes.GET("/session/:id", a.getSession)
 }
 
 func (a *API) healthCheck(c *gin.Context) {
@@ -72,6 +76,32 @@ func (a *API) startSession(c *gin.Context) {
 	sess, err := a.session.Create(c.Request.Context(), body.Model)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "unable to start a session", "error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, sess)
+}
+
+func (a *API) getSession(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "bad request", "error": "missing id path parameter"})
+		return
+	}
+
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "bad request; invalid session id", "error": err.Error()})
+		return
+	}
+
+	sess, err := a.session.Get(c.Request.Context(), uid)
+	if err != nil {
+		if errors.Is(err, store.ErrSessionNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
+			return
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"message": "bad request; invalid session id", "error": err.Error()})
 		return
 	}
 
