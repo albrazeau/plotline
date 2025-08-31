@@ -56,7 +56,6 @@ func (a *API) models(c *gin.Context) {
 }
 
 func (a *API) startSession(c *gin.Context) {
-
 	var body StartSessionRequest
 	if err := c.BindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "bad request body", "error": err.Error()})

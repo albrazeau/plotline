@@ -58,7 +58,7 @@ func (vk *ValkeyStore) Save(ctx context.Context, sess *models.Session) error {
 	key := fmt.Sprintf("session:%s", sess.ID.String())
 	err := setJSON(ctx, vk.client, key, sess, defaultSessionTTL)
 	if err != nil {
-		vk.logger.Error("failed to save session to valkey", slog.String("error", err.Error()))
+		vk.logger.ErrorContext(ctx, "failed to save session to valkey", slog.String("error", err.Error()))
 		return err
 	}
 	return nil
@@ -72,27 +72,27 @@ func (vk *ValkeyStore) Get(ctx context.Context, sessID uuid.UUID) (*models.Sessi
 
 	results := vk.client.DoMulti(ctx, getCmd, expireCmd)
 	if results == nil {
-		vk.logger.Error("pipeline failed: no results")
+		vk.logger.ErrorContext(ctx, "pipeline failed: no results")
 		return nil, errors.New("pipeline failed: no results returned")
 	}
 	if len(results) != 2 {
-		vk.logger.Error("pipeline returned unexpected result count", slog.Int("count", len(results)))
+		vk.logger.ErrorContext(ctx, "pipeline returned unexpected result count", slog.Int("count", len(results)))
 		return nil, fmt.Errorf("pipeline unexpected result count: %d", len(results))
 	}
 
 	getResp := results[0]
 	if err := getResp.Error(); err != nil {
 		if errors.Is(err, valkey.Nil) {
-			vk.logger.Warn("session not found", slog.String("key", key))
+			vk.logger.WarnContext(ctx, "session not found", slog.String("key", key))
 			return nil, ErrSessionNotFound
 		}
-		vk.logger.Error("failed to fetch session", slog.String("error", err.Error()))
+		vk.logger.ErrorContext(ctx, "failed to fetch session", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	var sess models.Session
 	if err := getResp.DecodeJSON(&sess); err != nil {
-		vk.logger.Error("failed to decode session JSON", slog.String("error", err.Error()))
+		vk.logger.ErrorContext(ctx, "failed to decode session JSON", slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -105,7 +105,7 @@ func (vk *ValkeyStore) Refresh(ctx context.Context, sessID uuid.UUID) error {
 	cmd := vk.client.B().Expire().Key(key).Seconds(int64(defaultSessionTTL.Seconds())).Build()
 	if err := vk.client.Do(ctx, cmd).Error(); err != nil {
 		if errors.Is(err, valkey.Nil) {
-			vk.logger.Warn("session not found", slog.String("key", key))
+			vk.logger.WarnContext(ctx, "session not found", slog.String("key", key))
 			return ErrSessionNotFound
 		}
 		return err

@@ -25,12 +25,11 @@ import (
 
 var (
 	version = "dev"
-	commit  = "unknown"
-	built   = "unknown"
+	commit  = "unknown" //nolint:gochecknoglobals // this is built into the binary using ldflags
+	built   = "unknown" //nolint:gochecknoglobals // this is built into the binary using ldflags
 )
 
 func run() int {
-
 	configPath := flag.String("config", "", "Path to the YAML config file")
 	flag.Parse()
 
@@ -91,8 +90,12 @@ func run() int {
 	app.RegisterRoutes(router)
 
 	srv := &http.Server{
-		Addr:    fmt.Sprintf(":%d", cfg.App.Port),
-		Handler: router,
+		Addr:              fmt.Sprintf(":%d", cfg.App.Port),
+		Handler:           router,
+		ReadHeaderTimeout: cfg.App.ReadHeaderTimeout,
+		ReadTimeout:       cfg.App.ReadTimeout,
+		WriteTimeout:      cfg.App.WriteTimeout,
+		IdleTimeout:       cfg.App.IdleTimeout,
 	}
 
 	// errgroup drives server run and graceful shutdown

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"gopkg.in/yaml.v3"
@@ -17,8 +18,12 @@ type Config struct {
 }
 
 type AppConfig struct {
-	Env  string `yaml:"env" validate:"required,oneof=dev staging prod production"`
-	Port int    `yaml:"port" validate:"required,min=1,max=65535"`
+	Env               string        `yaml:"env" validate:"required,oneof=dev staging prod production"`
+	Port              int           `yaml:"port" validate:"required,min=1,max=65535"`
+	ReadHeaderTimeout time.Duration `yaml:"read_header_timeout" validate:"required"`
+	ReadTimeout       time.Duration `yaml:"read_timeout" validate:"required"`
+	WriteTimeout      time.Duration `yaml:"write_timeout" validate:"required"`
+	IdleTimeout       time.Duration `yaml:"idle_timeout" validate:"required"`
 }
 
 type LogConfig struct {
@@ -37,8 +42,12 @@ type ValkeyConfig struct {
 func defaultConfig() *Config {
 	return &Config{
 		App: AppConfig{
-			Env:  "dev",
-			Port: 8080,
+			Env:               "dev",
+			Port:              8080,
+			ReadHeaderTimeout: 5 * time.Second,
+			ReadTimeout:       15 * time.Second,
+			WriteTimeout:      30 * time.Second,
+			IdleTimeout:       60 * time.Second,
 		},
 		Log: LogConfig{
 			Level:  "debug",
@@ -54,7 +63,6 @@ func defaultConfig() *Config {
 }
 
 func Load(path string) (*Config, error) {
-
 	cfg := defaultConfig()
 
 	if fileExists(path) {
@@ -80,6 +88,10 @@ func Load(path string) (*Config, error) {
 func overrideFromEnv(cfg *Config) {
 	overrideString("APP_ENV", &cfg.App.Env)
 	overrideInt("APP_PORT", &cfg.App.Port)
+	overrideDuration("APP_READ_HEADER_TIMEOUT", &cfg.App.ReadHeaderTimeout)
+	overrideDuration("APP_READ_TIMEOUT", &cfg.App.ReadTimeout)
+	overrideDuration("APP_WRITE_TIMEOUT", &cfg.App.WriteTimeout)
+	overrideDuration("APP_IDLE_TIMEOUT", &cfg.App.IdleTimeout)
 
 	overrideString("LOG_LEVEL", &cfg.Log.Level)
 	overrideString("LOG_FORMAT", &cfg.Log.Format)
@@ -97,6 +109,14 @@ func overrideString(key string, target *string) {
 func overrideInt(key string, target *int) {
 	if v := os.Getenv(key); v != "" {
 		if val, err := strconv.Atoi(v); err == nil {
+			*target = val
+		}
+	}
+}
+
+func overrideDuration(key string, target *time.Duration) {
+	if v := os.Getenv(key); v != "" {
+		if val, err := time.ParseDuration(v); err == nil {
 			*target = val
 		}
 	}
