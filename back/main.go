@@ -48,6 +48,11 @@ func run() int {
 		slog.String("commit", commit),
 		slog.String("built", built),
 	)
+	logger = logger.With(
+		slog.String("version", version),
+		slog.String("commit", commit),
+		slog.String("built", built),
+	)
 
 	if cfg.App.Env == "production" || cfg.App.Env == "prod" {
 		gin.SetMode(gin.ReleaseMode)

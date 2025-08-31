@@ -33,7 +33,7 @@ func NewOllamaLLM(ctx context.Context, logger *slog.Logger, uri string) (*Ollama
 
 	return &OllamaLLM{
 		client: client,
-		logger: logger,
+		logger: logger.With(slog.String("component", "ollama_llm")),
 	}, nil
 }
 

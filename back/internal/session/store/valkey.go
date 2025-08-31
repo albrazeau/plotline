@@ -37,7 +37,7 @@ func NewValkeyStore(ctx context.Context, logger *slog.Logger, option valkey.Clie
 
 	return &ValkeyStore{
 		client: client,
-		logger: logger,
+		logger: logger.With(slog.String("component", "valkey_store")),
 	}, nil
 }
 
@@ -83,7 +83,7 @@ func (vk *ValkeyStore) Get(ctx context.Context, sessID uuid.UUID) (*models.Sessi
 	getResp := results[0]
 	if err := getResp.Error(); err != nil {
 		if errors.Is(err, valkey.Nil) {
-			vk.logger.Info("session not found", slog.String("key", key))
+			vk.logger.Warn("session not found", slog.String("key", key))
 			return nil, ErrSessionNotFound
 		}
 		vk.logger.Error("failed to fetch session", slog.String("error", err.Error()))
@@ -98,4 +98,17 @@ func (vk *ValkeyStore) Get(ctx context.Context, sessID uuid.UUID) (*models.Sessi
 
 	expResp := results[1]
 	return &sess, expResp.Error()
+}
+
+func (vk *ValkeyStore) Refresh(ctx context.Context, sessID uuid.UUID) error {
+	key := fmt.Sprintf("session:%s", sessID.String())
+	cmd := vk.client.B().Expire().Key(key).Seconds(int64(defaultSessionTTL.Seconds())).Build()
+	if err := vk.client.Do(ctx, cmd).Error(); err != nil {
+		if errors.Is(err, valkey.Nil) {
+			vk.logger.Warn("session not found", slog.String("key", key))
+			return ErrSessionNotFound
+		}
+		return err
+	}
+	return nil
 }

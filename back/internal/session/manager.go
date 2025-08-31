@@ -17,7 +17,7 @@ type Manager struct {
 }
 
 func New(logger *slog.Logger, s store.Store) *Manager {
-	return &Manager{s: s, logger: logger}
+	return &Manager{s: s, logger: logger.With(slog.String("component", "session_manager"))}
 }
 
 func (mgr *Manager) Create(ctx context.Context, model string) (*models.Session, error) {
@@ -42,4 +42,8 @@ func (mgr *Manager) Save(ctx context.Context, sess *models.Session) error {
 
 func (mgr *Manager) Get(ctx context.Context, id uuid.UUID) (*models.Session, error) {
 	return mgr.s.Get(ctx, id)
+}
+
+func (mgr *Manager) Refresh(ctx context.Context, id uuid.UUID) error {
+	return mgr.s.Refresh(ctx, id)
 }
